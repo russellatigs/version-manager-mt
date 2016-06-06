@@ -64,8 +64,13 @@ public class JobController {
 
 		// Selects all features for Job, writes to a .dump file, and returns to
 		// user.
-		jda.updateJobToExported(user, jobid, 1, 2); // numfeaturesexported,
-																	// numfeatureclassesexported);
+		try {
+			sda.exportWorkspace(getJobDetails(jobid, user));
+			jda.updateJobToExported(user, jobid, 1, 2); // numfeaturesexported,
+														// numfeatureclassesexported);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
 
 		return getJobDetails(jobid, user);
 	}
@@ -79,7 +84,7 @@ public class JobController {
 		// ID.
 		// CHECK TO MAKE SURE IN THE EXPORTED STATE FIRST
 		jda.updateJobToCheckedIn(user, jobid, 3, 4); // numfeaturescheckedin,
-																	// numfeatureclassescheckedin);
+														// numfeatureclassescheckedin);
 
 		return getJobDetails(jobid, user);
 	}
