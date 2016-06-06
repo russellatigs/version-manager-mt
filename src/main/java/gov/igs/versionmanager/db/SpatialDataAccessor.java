@@ -34,20 +34,22 @@ public class SpatialDataAccessor {
 	public void createWorkspace(Long jobid, BigDecimal lat, BigDecimal lon) throws SQLException {
 		String jobidStr = Long.toString(jobid);
 		// DriverManager.registerDriver(new oracle.jdbc.driver.OracleDriver());
-		Connection conn = getConnection();
 
 		// Calls the “CreateWorkspace” procedure with a generated UUID as the
 		// name.
-		CallableStatement pstmt1 = conn.prepareCall("{call dbms_wm.createworkspace(?)}");
+		Connection conn1 = getConnection();
+		CallableStatement pstmt1 = conn1.prepareCall("{call dbms_wm.createworkspace(?)}");
 		pstmt1.setString(1, jobidStr);
 		pstmt1.execute();
 		pstmt1.close();
+		conn1.close();
 
 		List<Integer> bbox = getBBox(lat, lon);
 
 		// Calls the “LockRows” for the features in the provided spatial
 		// area, so that only the current workspace can modify these features.
-		CallableStatement pstmt2 = conn.prepareCall(
+		Connection conn2 = getConnection();
+		CallableStatement pstmt2 = conn2.prepareCall(
 				"{call dbms_wm.lockrows(workspace => ?, table_name => 'TDS_TOPO', lock_mode => 'E', Xmin => ?, Ymin => ?, Xmax => ?, Ymax => ?)}");
 		pstmt2.setString(1, jobidStr);
 		pstmt2.setInt(2, bbox.get(0));
@@ -56,8 +58,7 @@ public class SpatialDataAccessor {
 		pstmt2.setInt(5, bbox.get(3));
 		pstmt2.execute();
 		pstmt2.close();
-
-		conn.close();
+		conn2.close();
 	}
 
 	public void exportWorkspace(Job job) throws SQLException {
