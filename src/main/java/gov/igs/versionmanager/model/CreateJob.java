@@ -2,14 +2,14 @@ package gov.igs.versionmanager.model;
 
 import java.math.BigDecimal;
 
-public class CreateJob extends BaseJob {
+public class CreateJob {
 
 	private String name;
 	private BigDecimal latitude;
 	private BigDecimal longitude;
 
 	public boolean isValid() {
-		if (name != null && user != null && isLatitudeValid() && isLongitudeValid()) {
+		if (name != null && isLatitudeValid() && isLongitudeValid()) {
 			return true;
 		}
 		return false;

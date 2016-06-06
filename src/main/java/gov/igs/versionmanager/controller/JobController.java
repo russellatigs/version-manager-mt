@@ -14,7 +14,6 @@ import org.springframework.web.bind.annotation.RestController;
 
 import gov.igs.versionmanager.db.JobDataAccessor;
 import gov.igs.versionmanager.db.SpatialDataAccessor;
-import gov.igs.versionmanager.model.BaseJob;
 import gov.igs.versionmanager.model.CreateJob;
 import gov.igs.versionmanager.model.Job;
 
@@ -40,7 +39,7 @@ public class JobController {
 			job.setName(createJob.getName());
 			job.setStatus("NEW");
 			job.setCreationdate(new Date());
-			job.setCreatedby(createJob.getUser());
+			job.setCreatedby(user);
 			job.setLatitude(createJob.getLatitude());
 			job.setLongitude(createJob.getLongitude());
 
@@ -59,43 +58,40 @@ public class JobController {
 	}
 
 	@RequestMapping(value = "/{jobid}/file", method = RequestMethod.GET, produces = "application/json")
-	public Job exportJob(@PathVariable(value = "jobid") String jobid, @RequestBody BaseJob baseJob,
-			@RequestHeader("VMUser") String user) {
+	public Job exportJob(@PathVariable(value = "jobid") String jobid, @RequestHeader("VMUser") String user) {
 		if (!userCheck(user))
 			return null;
 
 		// Selects all features for Job, writes to a .dump file, and returns to
 		// user.
-		jda.updateJobToExported(baseJob.getUser(), jobid, 1, 2); // numfeaturesexported,
+		jda.updateJobToExported(user, jobid, 1, 2); // numfeaturesexported,
 																	// numfeatureclassesexported);
 
 		return getJobDetails(jobid, user);
 	}
 
 	@RequestMapping(value = "/{jobid}", method = RequestMethod.POST, produces = "application/json")
-	public Job checkInJob(@PathVariable(value = "jobid") String jobid, @RequestBody BaseJob baseJob,
-			@RequestHeader("VMUser") String user) {
+	public Job checkInJob(@PathVariable(value = "jobid") String jobid, @RequestHeader("VMUser") String user) {
 		if (!userCheck(user))
 			return null;
 
 		// Service updates all changed fields on the target features, other than
 		// ID.
 		// CHECK TO MAKE SURE IN THE EXPORTED STATE FIRST
-		jda.updateJobToCheckedIn(baseJob.getUser(), jobid, 3, 4); // numfeaturescheckedin,
+		jda.updateJobToCheckedIn(user, jobid, 3, 4); // numfeaturescheckedin,
 																	// numfeatureclassescheckedin);
 
 		return getJobDetails(jobid, user);
 	}
 
 	@RequestMapping(value = "/{jobid}", method = RequestMethod.PUT, produces = "application/json")
-	public Job postJobToGold(@PathVariable(value = "jobid") String jobid, @RequestBody BaseJob baseJob,
-			@RequestHeader("VMUser") String user) {
+	public Job postJobToGold(@PathVariable(value = "jobid") String jobid, @RequestHeader("VMUser") String user) {
 		if (!userCheck(user))
 			return null;
 
 		// Calls the “MergeWorkspace” procedure.
 		// CHECK TO MAKE SURE IN THE CHECKED-IN STATE FIRST
-		jda.updateJobToPosted(baseJob.getUser(), jobid);
+		jda.updateJobToPosted(user, jobid);
 
 		return getJobDetails(jobid, user);
 	}
