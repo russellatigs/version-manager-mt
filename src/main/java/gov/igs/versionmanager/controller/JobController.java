@@ -1,9 +1,17 @@
 package gov.igs.versionmanager.controller;
 
+import java.io.File;
+import java.io.FileInputStream;
 import java.util.Date;
 import java.util.List;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
+import javax.servlet.http.HttpServletResponse;
+
+import org.apache.tomcat.util.http.fileupload.IOUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -22,6 +30,8 @@ import gov.igs.versionmanager.model.Job;
 @RequestMapping(value = "/jobs")
 public class JobController {
 
+	private Logger log = Logger.getLogger(JobController.class.getName());
+
 	@Autowired
 	private JobDataAccessor jda;
 
@@ -30,8 +40,9 @@ public class JobController {
 
 	@RequestMapping(method = RequestMethod.POST, produces = "application/json")
 	public Job createJob(@RequestBody CreateJob createJob, @RequestHeader("VMUser") String user) {
-		if (!userCheck(user))
+		if (!userCheck(user)) {
 			return null;
+		}
 
 		if (createJob.isValid()) {
 			Job job = new Job();
@@ -52,88 +63,126 @@ public class JobController {
 
 			return job;
 		} else {
-			System.out.println("Job Request is not valid!");
+			log.log(Level.SEVERE, "Job Request is not valid!");
 			return null;
 		}
 	}
 
-	@RequestMapping(value = "/{jobid}/file", method = RequestMethod.GET, produces = "application/json")
-	public Job exportJob(@PathVariable(value = "jobid") String jobid, @RequestHeader("VMUser") String user) {
-		if (!userCheck(user))
-			return null;
-
-		// Selects all features for Job, writes to a .dump file, and returns to
-		// user.
-		try {
-			sda.exportWorkspace(getJobDetails(jobid, user));
-			jda.updateJobToExported(user, jobid, 1, 2); // numfeaturesexported,
-														// numfeatureclassesexported);
-		} catch (Exception e) {
-			e.printStackTrace();
+	@RequestMapping(value = "/{jobid}/file", method = RequestMethod.GET)
+	public void exportJob(@PathVariable(value = "jobid") String jobid, @RequestHeader("VMUser") String user,
+			HttpServletResponse response) {
+		if (!userCheck(user)) {
+			return;
 		}
 
-		return getJobDetails(jobid, user);
+		if (getJobDetails(jobid, user) != null) {
+			// Selects features for Job, writes to a .dump file, and returns
+			// file.
+			try {
+				File file = sda.exportWorkspace(jobid, user);
+				FileInputStream fis = new FileInputStream(file);
+
+				// Set the content type and attachment header.
+				response.addHeader("Content-disposition", "attachment;filename=" + file.getName());
+				response.setContentType(MediaType.TEXT_PLAIN_VALUE);
+				response.addHeader("Content-Length", Long.toString(file.length()));
+
+				// Copy the stream to the response's output stream.
+				IOUtils.copy(fis, response.getOutputStream());
+				response.flushBuffer();
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+		}
 	}
 
 	@RequestMapping(value = "/{jobid}", method = RequestMethod.POST, produces = "application/json")
 	public Job checkInJob(@PathVariable(value = "jobid") String jobid, @RequestHeader("VMUser") String user) {
-		if (!userCheck(user))
+		if (!userCheck(user)) {
 			return null;
+		}
 
-		// Service updates all changed fields on the target features, other than
-		// ID.
-		// CHECK TO MAKE SURE IN THE EXPORTED STATE FIRST
-		jda.updateJobToCheckedIn(user, jobid, 3, 4); // numfeaturescheckedin,
-														// numfeatureclassescheckedin);
+		if (getJobDetails(jobid, user) != null) {
+
+			// Service updates all changed fields on the target features, other
+			// than
+			// ID.
+			// CHECK TO MAKE SURE IN THE EXPORTED STATE FIRST
+			jda.updateJobToCheckedIn(user, jobid, 3, 4); // numfeaturescheckedin,
+															// numfeatureclassescheckedin);
+		} else {
+			return null;
+		}
 
 		return getJobDetails(jobid, user);
 	}
 
 	@RequestMapping(value = "/{jobid}", method = RequestMethod.PUT, produces = "application/json")
 	public Job postJobToGold(@PathVariable(value = "jobid") String jobid, @RequestHeader("VMUser") String user) {
-		if (!userCheck(user))
+		if (!userCheck(user)) {
 			return null;
+		}
 
-		// Calls the “MergeWorkspace” procedure.
-		// CHECK TO MAKE SURE IN THE CHECKED-IN STATE FIRST
-		jda.updateJobToPosted(user, jobid);
+		if (getJobDetails(jobid, user) != null) {
+
+			// Calls the “MergeWorkspace” procedure.
+			// CHECK TO MAKE SURE IN THE CHECKED-IN STATE FIRST
+			jda.updateJobToPosted(user, jobid);
+
+		} else {
+			return null;
+		}
 
 		return getJobDetails(jobid, user);
 	}
 
 	@RequestMapping(value = "/{jobid}", method = RequestMethod.DELETE)
 	public void deleteJob(@PathVariable(value = "jobid") String jobid, @RequestHeader("VMUser") String user) {
-		if (!userCheck(user))
+		if (!userCheck(user)) {
 			return;
+		}
 
-		try {
-			sda.removeWorkspace(jobid);
-			jda.deleteJob(jobid);
-		} catch (Exception e) {
-			e.printStackTrace();
+		if (getJobDetails(jobid, user) != null) {
+			try {
+				sda.removeWorkspace(jobid);
+				jda.deleteJob(jobid);
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
 		}
 	}
 
 	@RequestMapping(method = RequestMethod.GET, produces = "application/json")
 	public List<Job> getAllJobs(@RequestHeader("VMUser") String user) {
-		if (!userCheck(user))
+		if (!userCheck(user)) {
 			return null;
+		}
 
 		return jda.getAllJobs();
 	}
 
 	@RequestMapping(value = "/{jobid}", method = RequestMethod.GET, produces = "application/json")
 	public Job getJobDetails(@PathVariable(value = "jobid") String jobid, @RequestHeader("VMUser") String user) {
-		if (!userCheck(user))
+		if (!userCheck(user)) {
 			return null;
+		}
 
-		return jda.getJob(jobid);
+		Job job = jda.getJob(jobid);
+
+		if (job == null) {
+			log.log(Level.SEVERE, "Job does not exist!");
+			return null;
+		} else {
+			return job;
+		}
 	}
 
 	private boolean userCheck(String user) {
 		if (user != null & user.length() > 0) {
 			return true;
 		}
+
+		log.log(Level.SEVERE, "User does not exist!");
 		return false;
 	}
 }

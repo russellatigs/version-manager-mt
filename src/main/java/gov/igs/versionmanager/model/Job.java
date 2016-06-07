@@ -6,8 +6,6 @@ import java.util.Date;
 
 import javax.persistence.Column;
 import javax.persistence.Entity;
-import javax.persistence.GeneratedValue;
-import javax.persistence.GenerationType;
 import javax.persistence.Id;
 import javax.persistence.Lob;
 import javax.persistence.NamedQuery;
@@ -38,6 +36,7 @@ public class Job implements Serializable {
 
 	@Temporal(TemporalType.TIMESTAMP)
 	@Column(name = "CHECKINDATE")
+	@JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd HH:mm:ss.SSS z")
 	private Date checkindate;
 
 	@Lob
@@ -51,6 +50,7 @@ public class Job implements Serializable {
 
 	@Temporal(TemporalType.TIMESTAMP)
 	@Column(name = "EXPORTDATE")
+	@JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd HH:mm:ss.SSS z")
 	private Date exportdate;
 
 	@Lob
@@ -85,6 +85,7 @@ public class Job implements Serializable {
 
 	@Temporal(TemporalType.TIMESTAMP)
 	@Column(name = "POSTTOGOLDDATE")
+	@JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd HH:mm:ss.SSS z")
 	private Date posttogolddate;
 
 	@Lob
