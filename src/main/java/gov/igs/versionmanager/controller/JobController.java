@@ -24,6 +24,7 @@ import gov.igs.versionmanager.db.JobDataAccessor;
 import gov.igs.versionmanager.db.SpatialDataAccessor;
 import gov.igs.versionmanager.model.CreateJob;
 import gov.igs.versionmanager.model.Job;
+import gov.igs.versionmanager.model.VMResponse;
 
 @RestController
 @CrossOrigin
@@ -37,136 +38,117 @@ public class JobController {
 
 	@Autowired
 	private SpatialDataAccessor sda;
+	
+	private enum Method { EXPORT, CHECKIN, POST, DELETE };
 
 	@RequestMapping(method = RequestMethod.POST, produces = "application/json")
-	public Job createJob(@RequestBody CreateJob createJob, @RequestHeader("VMUser") String user) {
-		if (!userCheck(user)) {
-			return null;
-		}
-
-		if (createJob.isValid()) {
-			Job job = new Job();
-			job.setJobid((new Date()).getTime());
-			job.setName(createJob.getName());
-			job.setStatus("NEW");
-			job.setCreationdate(new Date());
-			job.setCreatedby(user);
-			job.setLatitude(createJob.getLatitude());
-			job.setLongitude(createJob.getLongitude());
-
-			try {
-				sda.createWorkspace(job.getJobid(), createJob.getLatitude(), createJob.getLongitude());
-				jda.createJob(job);
-			} catch (Exception e) {
-				e.printStackTrace();
+	public VMResponse createJob(@RequestBody CreateJob createJob, @RequestHeader("VMUser") String user) {
+		try {
+			if (createJob.isValid()) {
+				Job job = new Job();
+				job.setJobid((new Date()).getTime());
+				job.setName(createJob.getName());
+				job.setStatus(Job.Status.NEW);
+				job.setCreationdate(new Date());
+				job.setCreatedby(user);
+				job.setLatitude(createJob.getLatitude());
+				job.setLongitude(createJob.getLongitude());
+	
+				sda.createWorkspace(job);
+				
+				return job;
 			}
-
-			return job;
-		} else {
-			log.log(Level.SEVERE, "Job Request is not valid!");
-			return null;
+			else {
+				log.log(Level.SEVERE, "Job Request is not valid!");
+				return new VMResponse("Job Request is not valid!");				
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+			return new VMResponse(e.getMessage());
 		}
 	}
 
 	@RequestMapping(value = "/{jobid}/file", method = RequestMethod.GET)
 	public void exportJob(@PathVariable(value = "jobid") String jobid, @RequestHeader("VMUser") String user,
 			HttpServletResponse response) {
-		if (!userCheck(user)) {
-			return;
-		}
+		try {	
+			// CHECK TO MAKE SURE IN THE RIGHT STATE FIRST			
+			jobStatusCheck(getJobDetails(jobid, user), Method.EXPORT);
+			
+			// Selects features, writes to a .dump file, and returns file.
+			File file = sda.exportWorkspace(jobid, user);
+			FileInputStream fis = new FileInputStream(file);
 
-		if (getJobDetails(jobid, user) != null) {
-			// Selects features for Job, writes to a .dump file, and returns
-			// file.
-			try {
-				File file = sda.exportWorkspace(jobid, user);
-				FileInputStream fis = new FileInputStream(file);
+			// Set the content type and attachment header.
+			response.addHeader("Content-disposition", "attachment;filename=" + file.getName());
+			response.setContentType(MediaType.TEXT_PLAIN_VALUE);
+			response.addHeader("Content-Length", Long.toString(file.length()));
 
-				// Set the content type and attachment header.
-				response.addHeader("Content-disposition", "attachment;filename=" + file.getName());
-				response.setContentType(MediaType.TEXT_PLAIN_VALUE);
-				response.addHeader("Content-Length", Long.toString(file.length()));
-
-				// Copy the stream to the response's output stream.
-				IOUtils.copy(fis, response.getOutputStream());
-				response.flushBuffer();
-			} catch (Exception e) {
-				e.printStackTrace();
-			}
+			// Copy the stream to the response's output stream.
+			IOUtils.copy(fis, response.getOutputStream());
+			response.flushBuffer();
+		} catch (Exception e) {
+			e.printStackTrace();
 		}
 	}
 
 	@RequestMapping(value = "/{jobid}", method = RequestMethod.POST, produces = "application/json")
-	public Job checkInJob(@PathVariable(value = "jobid") String jobid, @RequestHeader("VMUser") String user) {
-		if (!userCheck(user)) {
-			return null;
-		}
-
-		if (getJobDetails(jobid, user) != null) {
-
+	public VMResponse checkInJob(@PathVariable(value = "jobid") String jobid, @RequestHeader("VMUser") String user) {
+		try {
+			// CHECK TO MAKE SURE IN THE EXPORTED STATE FIRST
+			jobStatusCheck( getJobDetails(jobid, user), Method.CHECKIN);
+					
 			// Service updates all changed fields on the target features, other
 			// than
 			// ID.
-			// CHECK TO MAKE SURE IN THE EXPORTED STATE FIRST
 			jda.updateJobToCheckedIn(user, jobid, 3, 4); // numfeaturescheckedin,
-															// numfeatureclassescheckedin);
-		} else {
-			return null;
-		}
+															// numfeatureclassescheckedin);	
 
-		return getJobDetails(jobid, user);
+			return getJobDetails(jobid, user);				
+		} catch (Exception e) {
+			e.printStackTrace();
+			return new VMResponse(e.getMessage());
+		}
 	}
 
 	@RequestMapping(value = "/{jobid}", method = RequestMethod.PUT, produces = "application/json")
-	public Job postJobToGold(@PathVariable(value = "jobid") String jobid, @RequestHeader("VMUser") String user) {
-		if (!userCheck(user)) {
-			return null;
-		}
-
-		if (getJobDetails(jobid, user) != null) {
-
+	public VMResponse postJobToGold(@PathVariable(value = "jobid") String jobid, @RequestHeader("VMUser") String user) {
+		try {
+			// CHECK TO MAKE SURE IN THE CHECKED-IN STATE FIRST				
+			jobStatusCheck(getJobDetails(jobid, user), Method.POST);
+			
 			// Calls the “MergeWorkspace” procedure.
-			// CHECK TO MAKE SURE IN THE CHECKED-IN STATE FIRST
 			jda.updateJobToPosted(user, jobid);
-
-		} else {
-			return null;
+			
+			return getJobDetails(jobid, user);
+		} catch (Exception e) {
+			e.printStackTrace();
+			return new VMResponse(e.getMessage());
 		}
-
-		return getJobDetails(jobid, user);
 	}
 
 	@RequestMapping(value = "/{jobid}", method = RequestMethod.DELETE)
-	public void deleteJob(@PathVariable(value = "jobid") String jobid, @RequestHeader("VMUser") String user) {
-		if (!userCheck(user)) {
-			return;
-		}
+	public VMResponse deleteJob(@PathVariable(value = "jobid") String jobid, @RequestHeader("VMUser") String user) {
+		try {
+			// CHECK TO MAKE SURE IN THE RIGHT STATE FIRST				
+			jobStatusCheck(getJobDetails(jobid, user), Method.DELETE);
 
-		if (getJobDetails(jobid, user) != null) {
-			try {
-				sda.removeWorkspace(jobid);
-				jda.deleteJob(jobid);
-			} catch (Exception e) {
-				e.printStackTrace();
-			}
+			sda.removeWorkspace(jobid);
+			
+			return new VMResponse("Job deleted succcessfully");
+		} catch (Exception e) {
+			e.printStackTrace();
+			return new VMResponse(e.getMessage());
 		}
 	}
 
 	@RequestMapping(method = RequestMethod.GET, produces = "application/json")
 	public List<Job> getAllJobs(@RequestHeader("VMUser") String user) {
-		if (!userCheck(user)) {
-			return null;
-		}
-
 		return jda.getAllJobs();
 	}
 
 	@RequestMapping(value = "/{jobid}", method = RequestMethod.GET, produces = "application/json")
 	public Job getJobDetails(@PathVariable(value = "jobid") String jobid, @RequestHeader("VMUser") String user) {
-		if (!userCheck(user)) {
-			return null;
-		}
-
 		Job job = jda.getJob(jobid);
 
 		if (job == null) {
@@ -176,13 +158,30 @@ public class JobController {
 			return job;
 		}
 	}
-
-	private boolean userCheck(String user) {
-		if (user != null & user.length() > 0) {
-			return true;
+	
+	private void jobStatusCheck(Job job, Method method) throws Exception {
+		if( job == null ) {
+			throw new Exception("Job does not exist!");
 		}
-
-		log.log(Level.SEVERE, "User does not exist!");
-		return false;
+		
+		switch(method) {
+		case EXPORT:
+			if( job.getStatus().equals(Job.Status.CHECKEDIN) || job.getStatus().equals(Job.Status.POSTED)) {
+				throw new Exception("Cannot export a job after it has been checked in!");
+			}		
+			break;
+		case POST:
+			if( !job.getStatus().equals(Job.Status.CHECKEDIN) ) {
+				throw new Exception("Jobs must be checked in to be posted to gold!");
+			}			
+			break;
+		case CHECKIN:
+			if( !job.getStatus().equals(Job.Status.EXPORTED) ) {
+				throw new Exception("Jobs must be exported to be checked in!");
+			}				
+			break;
+		case DELETE:
+			break;
+		}
 	}
 }

@@ -23,6 +23,7 @@ import org.springframework.stereotype.Component;
 
 import gov.igs.versionmanager.model.Job;
 import oracle.spatial.geometry.JGeometry;
+import oracle.spatial.util.GML2;
 import oracle.spatial.util.GeometryExceptionWithContext;
 import oracle.spatial.util.WKT;
 import oracle.sql.STRUCT;
@@ -42,8 +43,8 @@ public class SpatialDataAccessor {
 		DriverManager.registerDriver(new oracle.jdbc.driver.OracleDriver());
 	}
 
-	public void createWorkspace(Long jobid, BigDecimal lat, BigDecimal lon) throws SQLException {
-		String jobidStr = Long.toString(jobid);
+	public void createWorkspace(Job job) throws SQLException {
+		String jobidStr = Long.toString(job.getJobid());
 		// DriverManager.registerDriver(new oracle.jdbc.driver.OracleDriver());
 
 		// Calls the “CreateWorkspace” procedure with a generated UUID as the
@@ -55,7 +56,7 @@ public class SpatialDataAccessor {
 		pstmt1.close();
 		conn1.close();
 //
-//		List<Integer> bbox = getBBox(lat, lon);
+//		List<Integer> bbox = getBBox(job.getLatitude(), job.getLongitude());
 //
 //		// Calls the “LockRows” for the features in the provided spatial
 //		// area, so that only the current workspace can modify these features.
@@ -70,6 +71,8 @@ public class SpatialDataAccessor {
 //		pstmt2.execute();
 //		pstmt2.close();
 //		conn2.close();
+		
+		jda.createJob(job);
 	}
 
 	public File exportWorkspace(String jobid, String user)
@@ -88,12 +91,12 @@ public class SpatialDataAccessor {
 			Statement stmt = conn.createStatement();
 			ResultSet rs = stmt.executeQuery(query);
 
-			listOfTables.add(formTable(tableName, rs));
+			listOfTables.add(formTableForGMLFile(tableName, rs));
 		}
 
 		conn.close();
 
-		File fileToReturn = createDumpFile(job.getJobid(), listOfTables);
+		File fileToReturn = createGMLFile(job.getJobid(), listOfTables);
 
 		jda.updateJobToExported(user, jobid, countNumFeatures(listOfTables), countUniqueFeatureClasses(listOfTables));
 
@@ -111,6 +114,8 @@ public class SpatialDataAccessor {
 		pstmt1.close();
 
 		conn.close();
+		
+		jda.deleteJob(jobid);
 	}
 
 	private List<Integer> getBBox(BigDecimal lat, BigDecimal lon) {
@@ -158,7 +163,41 @@ public class SpatialDataAccessor {
 		return featureClasses.size();
 	}
 
-	private List<String> formTable(String tableName, ResultSet rs)
+	private List<String> formTableForGMLFile(String tableName, ResultSet rs)
+			throws SQLException, GeometryExceptionWithContext, IOException {
+		if (rs == null)
+			return null;
+
+		List<String> table = new ArrayList<String>();
+
+		try {
+			ResultSetMetaData rsmd = rs.getMetaData();
+			int NumOfCol = rsmd.getColumnCount();
+
+			for( int counter = 0; rs.next(); counter++) {
+				table.add("  <gml:featureMember>");
+				table.add("    <" + tableName.toLowerCase() + " fid=\"" + Integer.toHexString(counter) + "\">");
+
+				for (int i = 1; i <= NumOfCol; i++) {
+					if (rsmd.getColumnTypeName(i).equals("MDSYS.SDO_GEOMETRY")) {						
+						table.add("      <geometryProperty>" + GML2.to_GMLGeometry(JGeometry.load((STRUCT) rs.getObject(i))) + "</geometryProperty>");
+
+					} else {
+						table.add("      <" + rsmd.getColumnName(i).toUpperCase() + ">" + rs.getObject(i) + "</" + rsmd.getColumnName(i).toUpperCase() + ">");
+					}
+				}
+				
+				table.add("    </" + tableName.toLowerCase() + ">");
+				table.add("  </gml:featureMember>");
+			}
+		} catch (SQLException e) {
+			throw e;
+		}
+
+		return table;
+	}
+	
+	private List<String> formTableForDumpFile(String tableName, ResultSet rs)
 			throws SQLException, GeometryExceptionWithContext, UnsupportedEncodingException {
 		if (rs == null)
 			return null;
@@ -220,6 +259,26 @@ public class SpatialDataAccessor {
 			writer.newLine();
 		}
 
+		writer.close();
+
+		return fileToReturn;
+	}
+	
+	private File createGMLFile(Long jobid, List<List<String>> listOfTables) throws IOException {
+		File fileToReturn = new File("D:/" + Long.toString(jobid) + ".gml");
+		BufferedWriter writer = new BufferedWriter(new FileWriter(fileToReturn));
+
+		writer.write("<?xml version=\"1.0\" encoding=\"UTF-8\"?>"); writer.newLine();
+		writer.write("<FeatureCollection xmlns:xsi=\"http://www.w3c.org/2001/XMLSchema-instance\" xmlns:gml=\"http://www.opengis.net/gml\">"); writer.newLine();
+
+		for (List<String> table : listOfTables) {
+			for (String row : table) {
+				writer.write(row);
+				writer.newLine();
+			}
+		}
+		
+		writer.write("</FeatureCollection>"); writer.newLine();
 		writer.close();
 
 		return fileToReturn;

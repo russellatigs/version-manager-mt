@@ -22,10 +22,18 @@ import com.fasterxml.jackson.annotation.JsonFormat;
 @Entity
 @Table(name = "JOB")
 @NamedQuery(name = "Job.findAll", query = "SELECT j FROM Job j")
-public class Job implements Serializable {
+public class Job extends VMResponse implements Serializable {
 
 	private static final long serialVersionUID = 1L;
 
+	
+	public class Status {
+		public static final String NEW = "NEW";
+		public static final String EXPORTED = "EXPORTED";
+		public static final String CHECKEDIN = "CHECKEDIN";
+		public static final String POSTED = "POSTED";
+	}
+	
 	@Id
 	@Column(name = "JOBID")
 	private Long jobid;

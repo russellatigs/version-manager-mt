@@ -35,7 +35,7 @@ public class JobDataAccessor {
 		Job job = getJob(jobid);
 
 		em.getTransaction().begin();
-		job.setStatus("EXPORTED");
+		job.setStatus(Job.Status.EXPORTED);
 		job.setExportdate(new Date());
 		job.setExportedby(user);
 		job.setNumfeaturesexported(numfeaturesexported);
@@ -48,7 +48,7 @@ public class JobDataAccessor {
 		Job job = getJob(jobid);
 
 		em.getTransaction().begin();
-		job.setStatus("CHECKEDIN");
+		job.setStatus(Job.Status.CHECKEDIN);
 		job.setCheckindate(new Date());
 		job.setCheckedinby(user);
 		job.setNumfeaturescheckedin(numfeaturescheckedin);
@@ -60,7 +60,7 @@ public class JobDataAccessor {
 		Job job = getJob(jobid);
 
 		em.getTransaction().begin();
-		job.setStatus("POSTED");
+		job.setStatus(Job.Status.POSTED);
 		job.setPostedtogoldby(user);
 		job.setPosttogolddate(new Date());
 		em.getTransaction().commit();
