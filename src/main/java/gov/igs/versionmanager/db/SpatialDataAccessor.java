@@ -28,15 +28,15 @@ public class SpatialDataAccessor {
 
 	@Autowired
 	private JobDataAccessor jda;
-	
-	@Autowired 
+
+	@Autowired
 	private SpatialDataUtility sdUtil;
-	
+
 	@Autowired
 	private GMLHandler gmlHandler;
 
 	private static final String[] GEOM_TABLENAMES = { "TDSUTILITYINFRASTRUCTUREPOINT", "TDSUTILITYINFRASTRUCTURECURVE",
-			"TDSTRANSPORTATIONGROUNDPOINT", /*"TDSSTRUCTUREPOINT", */"TDSSTRUCTURECURVE", "TDSSTORAGEPOINT",
+			"TDSTRANSPORTATIONGROUNDPOINT", /* "TDSSTRUCTUREPOINT", */"TDSSTRUCTURECURVE", "TDSSTORAGEPOINT",
 			"TDSRECREATIONPOINT", "TDSRECREATIONCURVE", "TDSCULTUREPOINT", "TDSAERONAUTICPOINT" };
 
 	@PostConstruct
@@ -99,14 +99,16 @@ public class SpatialDataAccessor {
 
 		File fileToReturn = sdUtil.createGMLFile(jobid, listOfTables);
 
-		jda.updateJobToExported(user, jobid, sdUtil.countNumFeatures(listOfTables), sdUtil.countUniqueFeatureClasses(listOfTables));
+		jda.updateJobToExported(user, jobid, sdUtil.countNumFeatures(listOfTables),
+				sdUtil.countUniqueFeatureClasses(listOfTables));
 
 		return fileToReturn;
 	}
 
-	public synchronized void checkInFile(String jobid, String user, InputStream inputStream) throws SQLException, SAXException, IOException, ParserConfigurationException {
+	public synchronized void checkInFile(String jobid, String user, InputStream inputStream)
+			throws SQLException, SAXException, IOException, ParserConfigurationException {
 
-		// Go To workspace 
+		// Go To workspace
 		Connection conn = sdUtil.getConnection();
 		CallableStatement pstmt1 = conn.prepareCall("{call dbms_wm.gotoworkspace(?)}");
 		pstmt1.setString(1, jobid);
@@ -115,14 +117,14 @@ public class SpatialDataAccessor {
 		conn.close();
 
 		SAXParserFactory.newInstance().newSAXParser().parse(inputStream, gmlHandler);
-		
+
 		jda.updateJobToCheckedIn(user, jobid, gmlHandler.getNumFeatures(), gmlHandler.getNumUniqueFeatureClasses());
 	}
-	
+
 	public void postToGold(String jobid) {
-		
+
 	}
-	
+
 	public void removeWorkspace(String jobid) throws SQLException {
 		Connection conn = sdUtil.getConnection();
 
@@ -132,7 +134,7 @@ public class SpatialDataAccessor {
 		pstmt1.execute();
 		pstmt1.close();
 		conn.close();
-		
+
 		jda.deleteJob(jobid);
 	}
 }

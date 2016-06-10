@@ -25,9 +25,9 @@ import oracle.sql.STRUCT;
 @Component
 public class GMLHandler extends DefaultHandler {
 
-	@Autowired 
+	@Autowired
 	private SpatialDataUtility sdUtil;
-	
+
 	Map<String, String> fields = null;
 	String currElement = null;
 	String currTable = null;
@@ -102,8 +102,7 @@ public class GMLHandler extends DefaultHandler {
 								.parse(new InputSource(new ByteArrayInputStream(entry.getValue().getBytes("UTF-8"))));
 						sb.append("geom=? ");
 						jGeom = JGeometry.store(GML.fromNodeToGeometry(doc.getDocumentElement()), conn);
-					}
-					else {
+					} else {
 						sb.append(entry.getKey());
 						sb.append("='");
 						sb.append(entry.getValue());

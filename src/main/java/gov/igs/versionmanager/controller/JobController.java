@@ -40,8 +40,10 @@ public class JobController {
 
 	@Autowired
 	private SpatialDataAccessor sda;
-	
-	private enum Method { EXPORT, CHECKIN, POST, DELETE };
+
+	private enum Method {
+		EXPORT, CHECKIN, POST, DELETE
+	};
 
 	@RequestMapping(method = RequestMethod.POST, produces = "application/json")
 	public VMResponse createJob(@RequestBody CreateJob createJob, @RequestHeader("VMUser") String user) {
@@ -55,14 +57,13 @@ public class JobController {
 				job.setCreatedby(user);
 				job.setLatitude(createJob.getLatitude());
 				job.setLongitude(createJob.getLongitude());
-	
+
 				sda.createWorkspace(job);
-				
+
 				return job;
-			}
-			else {
+			} else {
 				log.log(Level.SEVERE, "Job Request is not valid!");
-				return new VMResponse("Job Request is not valid!");				
+				return new VMResponse("Job Request is not valid!");
 			}
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -73,10 +74,10 @@ public class JobController {
 	@RequestMapping(value = "/{jobid}/file", method = RequestMethod.GET)
 	public void exportJob(@PathVariable(value = "jobid") String jobid, @RequestHeader("VMUser") String user,
 			HttpServletResponse response) {
-		try {	
-			// CHECK TO MAKE SURE IN THE RIGHT STATE FIRST			
+		try {
+			// CHECK TO MAKE SURE IN THE RIGHT STATE FIRST
 			jobStatusCheck(getJobDetails(jobid, user), Method.EXPORT);
-			
+
 			// Selects features, writes to a .dump file, and returns file.
 			File file = sda.exportWorkspace(jobid, user);
 			FileInputStream fis = new FileInputStream(file);
@@ -95,14 +96,15 @@ public class JobController {
 	}
 
 	@RequestMapping(value = "/{jobid}", method = RequestMethod.POST, produces = "application/json")
-	public VMResponse checkInJob(@PathVariable(value = "jobid") String jobid, @RequestParam final MultipartFile file, @RequestHeader("VMUser") String user) {
+	public VMResponse checkInJob(@PathVariable(value = "jobid") String jobid, @RequestParam final MultipartFile file,
+			@RequestHeader("VMUser") String user) {
 		try {
 			// CHECK TO MAKE SURE IN THE EXPORTED STATE FIRST
-			jobStatusCheck( getJobDetails(jobid, user), Method.CHECKIN);
-					
+			jobStatusCheck(getJobDetails(jobid, user), Method.CHECKIN);
+
 			sda.checkInFile(jobid, user, file.getInputStream());
-			
-			return getJobDetails(jobid, user);				
+
+			return getJobDetails(jobid, user);
 		} catch (Exception e) {
 			e.printStackTrace();
 			return new VMResponse(e.getMessage());
@@ -112,12 +114,12 @@ public class JobController {
 	@RequestMapping(value = "/{jobid}", method = RequestMethod.PUT, produces = "application/json")
 	public VMResponse postJobToGold(@PathVariable(value = "jobid") String jobid, @RequestHeader("VMUser") String user) {
 		try {
-			// CHECK TO MAKE SURE IN THE CHECKED-IN STATE FIRST				
+			// CHECK TO MAKE SURE IN THE CHECKED-IN STATE FIRST
 			jobStatusCheck(getJobDetails(jobid, user), Method.POST);
-			
+
 			// Calls the “MergeWorkspace” procedure.
 			jda.updateJobToPosted(user, jobid);
-			
+
 			return getJobDetails(jobid, user);
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -128,11 +130,11 @@ public class JobController {
 	@RequestMapping(value = "/{jobid}", method = RequestMethod.DELETE)
 	public VMResponse deleteJob(@PathVariable(value = "jobid") String jobid, @RequestHeader("VMUser") String user) {
 		try {
-			// CHECK TO MAKE SURE IN THE RIGHT STATE FIRST				
+			// CHECK TO MAKE SURE IN THE RIGHT STATE FIRST
 			jobStatusCheck(getJobDetails(jobid, user), Method.DELETE);
 
 			sda.removeWorkspace(jobid);
-			
+
 			return new VMResponse("Job deleted succcessfully");
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -156,27 +158,27 @@ public class JobController {
 			return job;
 		}
 	}
-	
+
 	private void jobStatusCheck(Job job, Method method) throws Exception {
-		if( job == null ) {
+		if (job == null) {
 			throw new Exception("Job does not exist!");
 		}
-		
-		switch(method) {
+
+		switch (method) {
 		case EXPORT:
-			if( job.getStatus().equals(Job.Status.CHECKEDIN) || job.getStatus().equals(Job.Status.POSTED)) {
+			if (job.getStatus().equals(Job.Status.CHECKEDIN) || job.getStatus().equals(Job.Status.POSTED)) {
 				throw new Exception("Cannot export a job after it has been checked in!");
-			}		
+			}
 			break;
 		case POST:
-			if( !job.getStatus().equals(Job.Status.CHECKEDIN) ) {
+			if (!job.getStatus().equals(Job.Status.CHECKEDIN)) {
 				throw new Exception("Jobs must be checked in to be posted to gold!");
-			}			
+			}
 			break;
 		case CHECKIN:
-			if( !job.getStatus().equals(Job.Status.EXPORTED) ) {
+			if (!job.getStatus().equals(Job.Status.EXPORTED)) {
 				throw new Exception("Jobs must be exported to be checked in!");
-			}				
+			}
 			break;
 		case DELETE:
 			break;
