@@ -18,7 +18,9 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 import gov.igs.versionmanager.db.JobDataAccessor;
 import gov.igs.versionmanager.db.SpatialDataAccessor;
@@ -93,17 +95,13 @@ public class JobController {
 	}
 
 	@RequestMapping(value = "/{jobid}", method = RequestMethod.POST, produces = "application/json")
-	public VMResponse checkInJob(@PathVariable(value = "jobid") String jobid, @RequestHeader("VMUser") String user) {
+	public VMResponse checkInJob(@PathVariable(value = "jobid") String jobid, @RequestParam final MultipartFile file, @RequestHeader("VMUser") String user) {
 		try {
 			// CHECK TO MAKE SURE IN THE EXPORTED STATE FIRST
 			jobStatusCheck( getJobDetails(jobid, user), Method.CHECKIN);
 					
-			// Service updates all changed fields on the target features, other
-			// than
-			// ID.
-			jda.updateJobToCheckedIn(user, jobid, 3, 4); // numfeaturescheckedin,
-															// numfeatureclassescheckedin);	
-
+			sda.checkInFile(jobid, user, file.getInputStream());
+			
 			return getJobDetails(jobid, user);				
 		} catch (Exception e) {
 			e.printStackTrace();

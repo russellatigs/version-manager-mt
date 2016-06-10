@@ -1,38 +1,39 @@
 package gov.igs.versionmanager.db;
 
-import java.io.BufferedWriter;
 import java.io.File;
-import java.io.FileWriter;
 import java.io.IOException;
-import java.io.UnsupportedEncodingException;
-import java.math.BigDecimal;
-import java.math.RoundingMode;
+import java.io.InputStream;
 import java.sql.CallableStatement;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
-import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
 import javax.annotation.PostConstruct;
+import javax.xml.parsers.ParserConfigurationException;
+import javax.xml.parsers.SAXParserFactory;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
-
+import org.xml.sax.SAXException;
 import gov.igs.versionmanager.model.Job;
-import oracle.spatial.geometry.JGeometry;
-import oracle.spatial.util.GML2;
+import gov.igs.versionmanager.util.GMLHandler;
+import gov.igs.versionmanager.util.SpatialDataUtility;
 import oracle.spatial.util.GeometryExceptionWithContext;
-import oracle.spatial.util.WKT;
-import oracle.sql.STRUCT;
 
 @Component
 public class SpatialDataAccessor {
 
 	@Autowired
 	private JobDataAccessor jda;
+	
+	@Autowired 
+	private SpatialDataUtility sdUtil;
+	
+	@Autowired
+	private GMLHandler gmlHandler;
 
 	private static final String[] GEOM_TABLENAMES = { "TDSUTILITYINFRASTRUCTUREPOINT", "TDSUTILITYINFRASTRUCTURECURVE",
 			"TDSTRANSPORTATIONGROUNDPOINT", /*"TDSSTRUCTUREPOINT", */"TDSSTRUCTURECURVE", "TDSSTORAGEPOINT",
@@ -49,7 +50,7 @@ public class SpatialDataAccessor {
 
 		// Calls the “CreateWorkspace” procedure with a generated UUID as the
 		// name.
-		Connection conn1 = getConnection();
+		Connection conn1 = sdUtil.getConnection();
 		CallableStatement pstmt1 = conn1.prepareCall("{call dbms_wm.createworkspace(?)}");
 		pstmt1.setString(1, jobidStr);
 		pstmt1.execute();
@@ -79,8 +80,8 @@ public class SpatialDataAccessor {
 			throws SQLException, IOException, GeometryExceptionWithContext {
 
 		Job job = jda.getJob(jobid);
-		List<Integer> bbox = getBBox(job.getLatitude(), job.getLongitude());
-		Connection conn = getConnection();
+		List<Integer> bbox = sdUtil.getBBox(job.getLatitude(), job.getLongitude());
+		Connection conn = sdUtil.getConnection();
 
 		List<List<String>> listOfTables = new ArrayList<List<String>>();
 
@@ -91,200 +92,47 @@ public class SpatialDataAccessor {
 			Statement stmt = conn.createStatement();
 			ResultSet rs = stmt.executeQuery(query);
 
-			listOfTables.add(formTableForGMLFile(tableName, rs));
+			listOfTables.add(sdUtil.formTableForGMLFile(tableName, rs));
 		}
 
 		conn.close();
 
-		File fileToReturn = createGMLFile(job.getJobid(), listOfTables);
+		File fileToReturn = sdUtil.createGMLFile(jobid, listOfTables);
 
-		jda.updateJobToExported(user, jobid, countNumFeatures(listOfTables), countUniqueFeatureClasses(listOfTables));
+		jda.updateJobToExported(user, jobid, sdUtil.countNumFeatures(listOfTables), sdUtil.countUniqueFeatureClasses(listOfTables));
 
 		return fileToReturn;
 	}
 
-	public void removeWorkspace(String jobid) throws SQLException {
-		Connection conn = getConnection();
+	public synchronized void checkInFile(String jobid, String user, InputStream inputStream) throws SQLException, SAXException, IOException, ParserConfigurationException {
 
-		// Calls the “RemoveWorkspace” procedure with a generated UUID as the
-		// name.
+		// Go To workspace 
+		Connection conn = sdUtil.getConnection();
+		CallableStatement pstmt1 = conn.prepareCall("{call dbms_wm.gotoworkspace(?)}");
+		pstmt1.setString(1, jobid);
+		pstmt1.execute();
+		pstmt1.close();
+		conn.close();
+
+		SAXParserFactory.newInstance().newSAXParser().parse(inputStream, gmlHandler);
+		
+		jda.updateJobToCheckedIn(user, jobid, gmlHandler.getNumFeatures(), gmlHandler.getNumUniqueFeatureClasses());
+	}
+	
+	public void postToGold(String jobid) {
+		
+	}
+	
+	public void removeWorkspace(String jobid) throws SQLException {
+		Connection conn = sdUtil.getConnection();
+
+		// Calls “RemoveWorkspace” procedure with a generated UUID as the name.
 		CallableStatement pstmt1 = conn.prepareCall("{call dbms_wm.removeworkspace(?)}");
 		pstmt1.setString(1, jobid);
 		pstmt1.execute();
 		pstmt1.close();
-
 		conn.close();
 		
 		jda.deleteJob(jobid);
-	}
-
-	private List<Integer> getBBox(BigDecimal lat, BigDecimal lon) {
-		List<Integer> bbox = new ArrayList<Integer>();
-
-		bbox.add(lon.setScale(0, RoundingMode.FLOOR).intValue()); // xmin
-		bbox.add(lat.setScale(0, RoundingMode.FLOOR).intValue()); // ymin
-		bbox.add(lon.setScale(0, RoundingMode.CEILING).intValue()); // xmax
-		bbox.add(lat.setScale(0, RoundingMode.CEILING).intValue()); // ymax
-
-		return bbox;
-	}
-
-	private int countNumFeatures(List<List<String>> listOfTables) {
-		int recordCount = 0;
-
-		for (List<String> table : listOfTables) {
-			for (String row : table) {
-				recordCount++;
-			}
-
-			recordCount -= 2; // To account for the table name and column header
-								// rows.
-		}
-
-		return recordCount;
-	}
-
-	private int countUniqueFeatureClasses(List<List<String>> listOfTables) {
-		List<String> featureClasses = new ArrayList<String>();
-
-		for (List<String> table : listOfTables) {
-			for (int i = 0; i < table.size(); i++) {
-				String row = table.get(i);
-
-				if (row.contains(",") && i > 1) {
-					String[] cols = row.split(",");
-					if (cols.length > 2 && !featureClasses.contains(cols[2])) {
-						featureClasses.add(cols[2]);
-					}
-				}
-			}
-		}
-
-		return featureClasses.size();
-	}
-
-	private List<String> formTableForGMLFile(String tableName, ResultSet rs)
-			throws SQLException, GeometryExceptionWithContext, IOException {
-		if (rs == null)
-			return null;
-
-		List<String> table = new ArrayList<String>();
-
-		try {
-			ResultSetMetaData rsmd = rs.getMetaData();
-			int NumOfCol = rsmd.getColumnCount();
-
-			for( int counter = 0; rs.next(); counter++) {
-				table.add("  <gml:featureMember>");
-				table.add("    <" + tableName.toLowerCase() + " fid=\"" + Integer.toHexString(counter) + "\">");
-
-				for (int i = 1; i <= NumOfCol; i++) {
-					if (rsmd.getColumnTypeName(i).equals("MDSYS.SDO_GEOMETRY")) {						
-						table.add("      <geometryProperty>" + GML2.to_GMLGeometry(JGeometry.load((STRUCT) rs.getObject(i))) + "</geometryProperty>");
-
-					} else {
-						table.add("      <" + rsmd.getColumnName(i).toUpperCase() + ">" + rs.getObject(i) + "</" + rsmd.getColumnName(i).toUpperCase() + ">");
-					}
-				}
-				
-				table.add("    </" + tableName.toLowerCase() + ">");
-				table.add("  </gml:featureMember>");
-			}
-		} catch (SQLException e) {
-			throw e;
-		}
-
-		return table;
-	}
-	
-	private List<String> formTableForDumpFile(String tableName, ResultSet rs)
-			throws SQLException, GeometryExceptionWithContext, UnsupportedEncodingException {
-		if (rs == null)
-			return null;
-
-		List<String> table = new ArrayList<String>();
-
-		try {
-			ResultSetMetaData rsmd = rs.getMetaData();
-			int NumOfCol = rsmd.getColumnCount();
-
-			StringBuilder tableHeaders = new StringBuilder();
-			for (int h = 1; h <= NumOfCol; h++) {
-				tableHeaders.append(rsmd.getColumnName(h).toUpperCase());
-				if (h < NumOfCol) {
-					tableHeaders.append(",");
-				}
-			}
-
-			table.add(tableName.toUpperCase());
-			table.add(tableHeaders.toString());
-
-			while (rs.next()) {
-				StringBuilder currentRow = new StringBuilder();
-
-				for (int i = 1; i <= NumOfCol; i++) {
-					if (rsmd.getColumnTypeName(i).equals("MDSYS.SDO_GEOMETRY")) {
-						JGeometry jGeom = JGeometry.load((STRUCT) rs.getObject(i));
-						WKT wkt = new WKT();
-						currentRow.append(new String(wkt.fromJGeometry(jGeom), "UTF-8"));
-					} else {
-						currentRow.append(rs.getObject(i));
-					}
-
-					if (i < NumOfCol) {
-						currentRow.append(",");
-					}
-				}
-
-				table.add(currentRow.toString());
-			}
-		} catch (SQLException e) {
-			throw e;
-		}
-
-		return table;
-	}
-
-	private File createDumpFile(Long jobid, List<List<String>> listOfTables) throws IOException {
-		File fileToReturn = new File("D:/" + Long.toString(jobid) + ".dump");
-		BufferedWriter writer = new BufferedWriter(new FileWriter(fileToReturn));
-
-		for (List<String> table : listOfTables) {
-
-			for (String row : table) {
-				writer.write(row);
-				writer.newLine();
-			}
-			writer.newLine();
-			writer.newLine();
-		}
-
-		writer.close();
-
-		return fileToReturn;
-	}
-	
-	private File createGMLFile(Long jobid, List<List<String>> listOfTables) throws IOException {
-		File fileToReturn = new File("D:/" + Long.toString(jobid) + ".gml");
-		BufferedWriter writer = new BufferedWriter(new FileWriter(fileToReturn));
-
-		writer.write("<?xml version=\"1.0\" encoding=\"UTF-8\"?>"); writer.newLine();
-		writer.write("<FeatureCollection xmlns:xsi=\"http://www.w3c.org/2001/XMLSchema-instance\" xmlns:gml=\"http://www.opengis.net/gml\">"); writer.newLine();
-
-		for (List<String> table : listOfTables) {
-			for (String row : table) {
-				writer.write(row);
-				writer.newLine();
-			}
-		}
-		
-		writer.write("</FeatureCollection>"); writer.newLine();
-		writer.close();
-
-		return fileToReturn;
-	}
-
-	private Connection getConnection() throws SQLException {
-		return DriverManager.getConnection("jdbc:oracle:thin:@54.152.233.204:1521:ORCL", "versionmanager", "Password1");
 	}
 }
