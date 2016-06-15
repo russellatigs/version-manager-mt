@@ -1,6 +1,7 @@
 package gov.igs.versionmanager.util;
 
 import java.io.ByteArrayInputStream;
+import java.sql.CallableStatement;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.util.HashMap;
@@ -28,16 +29,17 @@ public class GMLHandler extends DefaultHandler {
 	@Autowired
 	private SpatialDataUtility sdUtil;
 
-	Map<String, String> fields = null;
-	String currElement = null;
-	String currTable = null;
-	boolean startElement = false;
-	boolean geom = false;
-	StringBuilder geomSB = null;
-	STRUCT jGeom = null;
-	PreparedStatement ps = null;
-	int numFeatures = 0;
-	Set<String> featureClasses = new HashSet<String>();
+	private Map<String, String> fields = null;
+	private String currElement = null;
+	private String currTable = null;
+	private boolean startElement = false;
+	private boolean geom = false;
+	private StringBuilder geomSB = null;
+	private STRUCT jGeom = null;
+	private PreparedStatement ps = null;
+	private int numFeatures = 0;
+	private Set<String> featureClasses = new HashSet<String>();
+	private String workspace = null;
 
 	public int getNumFeatures() {
 		return numFeatures;
@@ -47,6 +49,10 @@ public class GMLHandler extends DefaultHandler {
 		return featureClasses.size();
 	}
 
+	public void init(String jobid) {
+		workspace = jobid;
+	}
+	
 	public void startElement(String uri, String localName, String qName, Attributes atts) throws SAXException {
 		if (qName.equalsIgnoreCase("FeatureCollection") || qName.equalsIgnoreCase("gml:featureMember")) {
 			// do nothing
@@ -87,8 +93,16 @@ public class GMLHandler extends DefaultHandler {
 		startElement = false;
 
 		if (qName.equalsIgnoreCase(currTable)) {
+			Connection conn = null;
 			try {
-				Connection conn = sdUtil.getConnection();
+				conn = sdUtil.getConnection();
+				
+				// Go To workspace
+				CallableStatement cstmt = conn.prepareCall("{call dbms_wm.gotoworkspace(?)}");
+				cstmt.setString(1, workspace);
+				cstmt.execute();
+				cstmt.close();
+				
 				StringBuilder sb = new StringBuilder();
 				sb.append("UPDATE ");
 				sb.append(currTable);
@@ -124,6 +138,13 @@ public class GMLHandler extends DefaultHandler {
 				ps.close();
 			} catch (Exception e) {
 				e.printStackTrace();
+			} finally {
+				try {
+					conn.close();
+				} catch (Exception e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
 			}
 			currElement = null;
 			currTable = null;

@@ -115,11 +115,12 @@ public class JobController {
 	public VMResponse postJobToGold(@PathVariable(value = "jobid") String jobid, @RequestHeader("VMUser") String user) {
 		try {
 			// CHECK TO MAKE SURE IN THE CHECKED-IN STATE FIRST
-			jobStatusCheck(getJobDetails(jobid, user), Method.POST);
+			Job job = getJobDetails(jobid, user);
+			jobStatusCheck(job, Method.POST);
 
 			// Calls the “MergeWorkspace” procedure.
-			jda.updateJobToPosted(user, jobid);
-
+			sda.postToGold(job, user);
+			
 			return getJobDetails(jobid, user);
 		} catch (Exception e) {
 			e.printStackTrace();
