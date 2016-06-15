@@ -57,6 +57,7 @@ public class JobController {
 				job.setCreatedby(user);
 				job.setLatitude(createJob.getLatitude());
 				job.setLongitude(createJob.getLongitude());
+				job.setProvider(createJob.getProvider());
 
 				sda.createWorkspace(job);
 

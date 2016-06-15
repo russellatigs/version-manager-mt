@@ -98,6 +98,10 @@ public class Job extends VMResponse implements Serializable {
 	@Lob
 	@Column(name = "STATUS")
 	private String status;
+	
+	@Lob
+	@Column(name = "PROVIDER")
+	private String provider;	
 
 	public Job() {
 	}
@@ -238,4 +242,12 @@ public class Job extends VMResponse implements Serializable {
 		this.status = status;
 	}
 
+	public String getProvider() {
+		return this.provider;
+	}
+
+	public void setProvider(String provider) {
+		this.provider = provider;
+	}
+	
 }

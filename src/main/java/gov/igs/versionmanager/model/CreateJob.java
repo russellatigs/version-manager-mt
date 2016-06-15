@@ -5,11 +5,12 @@ import java.math.BigDecimal;
 public class CreateJob {
 
 	private String name;
+	private String provider;
 	private BigDecimal latitude;
 	private BigDecimal longitude;
 
 	public boolean isValid() {
-		if (name != null && isLatitudeValid() && isLongitudeValid()) {
+		if (name != null && provider != null && isLatitudeValid() && isLongitudeValid()) {
 			return true;
 		}
 		return false;
@@ -54,4 +55,12 @@ public class CreateJob {
 	public void setLongitude(BigDecimal longitude) {
 		this.longitude = longitude;
 	}
+	
+	public String getProvider() {
+		return this.provider;
+	}
+
+	public void setProvider(String provider) {
+		this.provider = provider;
+	}	
 }
