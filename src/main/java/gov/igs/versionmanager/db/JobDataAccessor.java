@@ -7,14 +7,17 @@ import javax.annotation.PostConstruct;
 import javax.persistence.EntityManager;
 import javax.persistence.EntityManagerFactory;
 import javax.persistence.Persistence;
-import javax.persistence.criteria.CriteriaQuery;
-import javax.persistence.criteria.Root;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import gov.igs.versionmanager.model.Job;
+import gov.igs.versionmanager.util.SpatialDataUtility;
 
 @Component
 public class JobDataAccessor {
+
+	@Autowired
+	private SpatialDataUtility sdUtil;
 
 	private EntityManager em;
 
@@ -73,14 +76,17 @@ public class JobDataAccessor {
 	}
 
 	public List<Job> getAllJobs() {
-		CriteriaQuery<Job> cq = em.getCriteriaBuilder().createQuery(Job.class);
-		Root<Job> job = cq.from(Job.class);
-		cq.select(job);
-
-		return em.createQuery(cq).getResultList();
+		return em.createNamedQuery("Job.findAll").getResultList();
 	}
 
 	public Job getJob(String jobid) {
 		return em.find(Job.class, Long.parseLong(jobid));
+	}
+
+	public Job getLatestJobForCell(Integer lat, Integer lon) {
+		return getJob(em
+				.createNativeQuery("select max(jobid) from job where longitude >= " + lon + " and longitude <= "
+						+ (lon + 1) + " and latitude >= " + lat + " and latitude <= " + (lat + 1))
+				.getSingleResult().toString());
 	}
 }

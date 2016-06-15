@@ -26,6 +26,22 @@ import oracle.sql.STRUCT;
 @Component
 public class SpatialDataUtility {
 
+	public boolean isLatitudeValid(BigDecimal latitude) {
+		if (latitude != null && latitude.compareTo(BigDecimal.valueOf(-90)) > -1
+				&& latitude.compareTo(BigDecimal.valueOf(90)) < 1) {
+			return true;
+		}
+		return false;
+	}
+
+	public boolean isLongitudeValid(BigDecimal longitude) {
+		if (longitude != null && longitude.compareTo(BigDecimal.valueOf(-180)) > -1
+				&& longitude.compareTo(BigDecimal.valueOf(180)) < 1) {
+			return true;
+		}
+		return false;
+	}
+
 	public List<Integer> getBBox(BigDecimal lat, BigDecimal lon) {
 		List<Integer> bbox = new ArrayList<Integer>();
 
@@ -129,71 +145,73 @@ public class SpatialDataUtility {
 	public Connection getConnection() throws SQLException {
 		return DriverManager.getConnection("jdbc:oracle:thin:@54.152.233.204:1521:ORCL", "versionmanager", "Password1");
 	}
-	
-//	public List<String> formTableForDumpFile(String tableName, ResultSet rs)
-//			throws SQLException, GeometryExceptionWithContext, UnsupportedEncodingException {
-//		if (rs == null)
-//			return null;
-//
-//		List<String> table = new ArrayList<String>();
-//
-//		try {
-//			ResultSetMetaData rsmd = rs.getMetaData();
-//			int NumOfCol = rsmd.getColumnCount();
-//
-//			StringBuilder tableHeaders = new StringBuilder();
-//			for (int h = 1; h <= NumOfCol; h++) {
-//				tableHeaders.append(rsmd.getColumnName(h).toUpperCase());
-//				if (h < NumOfCol) {
-//					tableHeaders.append(",");
-//				}
-//			}
-//
-//			table.add(tableName.toUpperCase());
-//			table.add(tableHeaders.toString());
-//
-//			while (rs.next()) {
-//				StringBuilder currentRow = new StringBuilder();
-//
-//				for (int i = 1; i <= NumOfCol; i++) {
-//					if (rsmd.getColumnTypeName(i).equals("MDSYS.SDO_GEOMETRY")) {
-//						JGeometry jGeom = JGeometry.load((STRUCT) rs.getObject(i));
-//						WKT wkt = new WKT();
-//						currentRow.append(new String(wkt.fromJGeometry(jGeom), "UTF-8"));
-//					} else {
-//						currentRow.append(rs.getObject(i));
-//					}
-//
-//					if (i < NumOfCol) {
-//						currentRow.append(",");
-//					}
-//				}
-//
-//				table.add(currentRow.toString());
-//			}
-//		} catch (SQLException e) {
-//			throw e;
-//		}
-//
-//		return table;
-//	}
-//
-//	public File createDumpFile(Long jobid, List<List<String>> listOfTables) throws IOException {
-//		File fileToReturn = new File("D:/" + Long.toString(jobid) + ".dump");
-//		BufferedWriter writer = new BufferedWriter(new FileWriter(fileToReturn));
-//
-//		for (List<String> table : listOfTables) {
-//
-//			for (String row : table) {
-//				writer.write(row);
-//				writer.newLine();
-//			}
-//			writer.newLine();
-//			writer.newLine();
-//		}
-//
-//		writer.close();
-//
-//		return fileToReturn;
-//	}
+
+	// public List<String> formTableForDumpFile(String tableName, ResultSet rs)
+	// throws SQLException, GeometryExceptionWithContext,
+	// UnsupportedEncodingException {
+	// if (rs == null)
+	// return null;
+	//
+	// List<String> table = new ArrayList<String>();
+	//
+	// try {
+	// ResultSetMetaData rsmd = rs.getMetaData();
+	// int NumOfCol = rsmd.getColumnCount();
+	//
+	// StringBuilder tableHeaders = new StringBuilder();
+	// for (int h = 1; h <= NumOfCol; h++) {
+	// tableHeaders.append(rsmd.getColumnName(h).toUpperCase());
+	// if (h < NumOfCol) {
+	// tableHeaders.append(",");
+	// }
+	// }
+	//
+	// table.add(tableName.toUpperCase());
+	// table.add(tableHeaders.toString());
+	//
+	// while (rs.next()) {
+	// StringBuilder currentRow = new StringBuilder();
+	//
+	// for (int i = 1; i <= NumOfCol; i++) {
+	// if (rsmd.getColumnTypeName(i).equals("MDSYS.SDO_GEOMETRY")) {
+	// JGeometry jGeom = JGeometry.load((STRUCT) rs.getObject(i));
+	// WKT wkt = new WKT();
+	// currentRow.append(new String(wkt.fromJGeometry(jGeom), "UTF-8"));
+	// } else {
+	// currentRow.append(rs.getObject(i));
+	// }
+	//
+	// if (i < NumOfCol) {
+	// currentRow.append(",");
+	// }
+	// }
+	//
+	// table.add(currentRow.toString());
+	// }
+	// } catch (SQLException e) {
+	// throw e;
+	// }
+	//
+	// return table;
+	// }
+	//
+	// public File createDumpFile(Long jobid, List<List<String>> listOfTables)
+	// throws IOException {
+	// File fileToReturn = new File("D:/" + Long.toString(jobid) + ".dump");
+	// BufferedWriter writer = new BufferedWriter(new FileWriter(fileToReturn));
+	//
+	// for (List<String> table : listOfTables) {
+	//
+	// for (String row : table) {
+	// writer.write(row);
+	// writer.newLine();
+	// }
+	// writer.newLine();
+	// writer.newLine();
+	// }
+	//
+	// writer.close();
+	//
+	// return fileToReturn;
+	// }
 }

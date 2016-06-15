@@ -2,6 +2,7 @@ package gov.igs.versionmanager.controller;
 
 import java.io.File;
 import java.io.FileInputStream;
+import java.math.BigDecimal;
 import java.util.Date;
 import java.util.List;
 import java.util.logging.Level;
@@ -27,6 +28,7 @@ import gov.igs.versionmanager.db.SpatialDataAccessor;
 import gov.igs.versionmanager.model.CreateJob;
 import gov.igs.versionmanager.model.Job;
 import gov.igs.versionmanager.model.VMResponse;
+import gov.igs.versionmanager.util.SpatialDataUtility;
 
 @RestController
 @CrossOrigin
@@ -41,6 +43,9 @@ public class JobController {
 	@Autowired
 	private SpatialDataAccessor sda;
 
+	@Autowired
+	private SpatialDataUtility sdUtil;
+
 	private enum Method {
 		EXPORT, CHECKIN, POST, DELETE
 	};
@@ -48,15 +53,27 @@ public class JobController {
 	@RequestMapping(method = RequestMethod.POST, produces = "application/json")
 	public VMResponse createJob(@RequestBody CreateJob createJob, @RequestHeader("VMUser") String user) {
 		try {
-			if (createJob.isValid()) {
+			if (createJob.isPopulated()) {
+				BigDecimal lat = createJob.getLatitude();
+				BigDecimal lon = createJob.getLongitude();
+				
+				if (!sdUtil.isLatitudeValid(lat)) {
+					log.log(Level.SEVERE, "Latitude " + lat + " is invalid!");
+					return new VMResponse("Latitude " + lat + " is invalid!");
+				}
+				if (!sdUtil.isLongitudeValid(lon)) {
+					log.log(Level.SEVERE, "Longitude " + lon + " is invalid!");
+					return new VMResponse("Longitude " + lon + " is invalid!");
+				}	
+				
 				Job job = new Job();
 				job.setJobid((new Date()).getTime());
 				job.setName(createJob.getName());
 				job.setStatus(Job.Status.NEW);
 				job.setCreationdate(new Date());
 				job.setCreatedby(user);
-				job.setLatitude(createJob.getLatitude());
-				job.setLongitude(createJob.getLongitude());
+				job.setLatitude(lat);
+				job.setLongitude(lon);
 				job.setProvider(createJob.getProvider());
 
 				sda.createWorkspace(job);
@@ -121,7 +138,7 @@ public class JobController {
 
 			// Calls the “MergeWorkspace” procedure.
 			sda.postToGold(job, user);
-			
+
 			return getJobDetails(jobid, user);
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -152,6 +169,29 @@ public class JobController {
 	@RequestMapping(value = "/{jobid}", method = RequestMethod.GET, produces = "application/json")
 	public Job getJobDetails(@PathVariable(value = "jobid") String jobid, @RequestHeader("VMUser") String user) {
 		Job job = jda.getJob(jobid);
+
+		if (job == null) {
+			log.log(Level.SEVERE, "Job does not exist!");
+			return null;
+		} else {
+			return job;
+		}
+	}
+
+	@RequestMapping(value = "/latest", method = RequestMethod.GET, produces = "application/json")
+	public Job getLatestJobForCell(@RequestParam(value = "xmin") Integer xmin,
+			@RequestParam(value = "ymin") Integer ymin, @RequestHeader("VMUser") String user) {
+
+		if (!sdUtil.isLatitudeValid(BigDecimal.valueOf(ymin))) {
+			log.log(Level.SEVERE, "Latitude " + ymin + " is invalid!");
+			return null;
+		}
+		if (!sdUtil.isLongitudeValid(BigDecimal.valueOf(xmin))) {
+			log.log(Level.SEVERE, "Longitude " + xmin + " is invalid!");
+			return null;
+		}
+
+		Job job = jda.getLatestJobForCell(ymin, xmin);
 
 		if (job == null) {
 			log.log(Level.SEVERE, "Job does not exist!");

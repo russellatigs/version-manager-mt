@@ -3,30 +3,14 @@ package gov.igs.versionmanager.model;
 import java.math.BigDecimal;
 
 public class CreateJob {
-
+	
 	private String name;
 	private String provider;
 	private BigDecimal latitude;
 	private BigDecimal longitude;
 
-	public boolean isValid() {
-		if (name != null && provider != null && isLatitudeValid() && isLongitudeValid()) {
-			return true;
-		}
-		return false;
-	}
-
-	public boolean isLatitudeValid() {
-		if (latitude != null && latitude.compareTo(BigDecimal.valueOf(-90)) > -1
-				&& latitude.compareTo(BigDecimal.valueOf(90)) < 1) {
-			return true;
-		}
-		return false;
-	}
-
-	public boolean isLongitudeValid() {
-		if (longitude != null && longitude.compareTo(BigDecimal.valueOf(-180)) > -1
-				&& longitude.compareTo(BigDecimal.valueOf(180)) < 1) {
+	public boolean isPopulated() {
+		if (name != null && provider != null && latitude != null && longitude != null) {
 			return true;
 		}
 		return false;
