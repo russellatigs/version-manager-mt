@@ -31,7 +31,6 @@ import gov.igs.versionmanager.model.VMResponse;
 import gov.igs.versionmanager.util.SpatialDataUtility;
 
 @RestController
-@CrossOrigin
 @RequestMapping(value = "/jobs")
 public class JobController {
 

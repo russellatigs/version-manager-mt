@@ -143,7 +143,7 @@ public class SpatialDataUtility {
 	}
 
 	public Connection getConnection() throws SQLException {
-		return DriverManager.getConnection("jdbc:oracle:thin:@54.152.233.204:1521:ORCL", "versionmanager", "Password1");
+		return DriverManager.getConnection("jdbc:oracle:thin:@54.172.145.108:1521:ORCL", "versionmanager", "Password1");
 	}
 
 	// public List<String> formTableForDumpFile(String tableName, ResultSet rs)

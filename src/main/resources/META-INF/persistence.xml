@@ -19,7 +19,7 @@
 		<class>gov.igs.versionmanager.model.Job</class>
 		<properties>
 			<property name="javax.persistence.jdbc.driver" value="oracle.jdbc.OracleDriver" />
-			<property name="javax.persistence.jdbc.url" value="jdbc:oracle:thin:@54.152.233.204:1521:ORCL" />
+			<property name="javax.persistence.jdbc.url" value="jdbc:oracle:thin:@54.172.145.108:1521:ORCL" />
 			<property name="javax.persistence.jdbc.user" value="versionmanager" />
 			<property name="javax.persistence.jdbc.password" value="Password1" />
 		</properties>
