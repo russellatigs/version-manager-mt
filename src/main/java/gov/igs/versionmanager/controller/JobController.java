@@ -103,7 +103,6 @@ public class JobController {
 			response.addHeader("Content-disposition", "attachment;filename=" + file.getName());
 			response.setContentType(MediaType.TEXT_PLAIN_VALUE);
 			response.addHeader("Content-Length", Long.toString(file.length()));
-			response.addHeader("X-FRAME-OPTIONS", "ALLOW-FROM http://localhost:8080/views/viewjobs.html");
 			response.addHeader("Set-Cookie",  "fileDownload=true; path=/");
 
 			// Copy the stream to the response's output stream.
