@@ -75,8 +75,7 @@ public class SpatialDataAccessor {
 	public File exportWorkspace(String jobid, String user)
 			throws SQLException, IOException, GeometryExceptionWithContext {
 
-		Job job = jda.getJob(jobid);
-		List<Integer> bbox = sdUtil.getBBox(job.getLatitude(), job.getLongitude());
+		List<Integer> bbox = sdUtil.getBBox(jda.getJob(jobid).getCid());
 		Connection conn = sdUtil.getConnection();
 
 		List<List<String>> listOfTables = new ArrayList<List<String>>();
@@ -143,7 +142,7 @@ public class SpatialDataAccessor {
 	private Map<String, List<String>> getImpactedFeatures(Job job) throws SQLException {
 		Map<String, List<String>> impactedFeatures = new HashMap<String, List<String>>();
 		Connection conn = sdUtil.getConnection();
-		List<Integer> bbox = sdUtil.getBBox(job.getLatitude(), job.getLongitude());
+		List<Integer> bbox = sdUtil.getBBox(job.getCid());
 
 		for (String tableName : GEOM_TABLENAMES) {
 			String query = "select objectid from " + tableName

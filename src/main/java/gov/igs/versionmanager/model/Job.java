@@ -1,7 +1,6 @@
 package gov.igs.versionmanager.model;
 
 import java.io.Serializable;
-import java.math.BigDecimal;
 import java.util.Date;
 
 import javax.persistence.Column;
@@ -64,11 +63,9 @@ public class Job extends VMResponse implements Serializable {
 	@Column(name = "EXPORTEDBY")
 	private String exportedby;
 
-	@Column(name = "LATITUDE")
-	private BigDecimal latitude;
-
-	@Column(name = "LONGITUDE")
-	private BigDecimal longitude;
+	@Lob
+	@Column(name = "CID")
+	private String cid;
 
 	@Lob
 	@Column(name = "NAME")
@@ -162,20 +159,12 @@ public class Job extends VMResponse implements Serializable {
 		this.exportedby = exportedby;
 	}
 
-	public BigDecimal getLatitude() {
-		return this.latitude;
+	public String getCid() {
+		return this.cid;
 	}
 
-	public void setLatitude(BigDecimal latitude) {
-		this.latitude = latitude;
-	}
-
-	public BigDecimal getLongitude() {
-		return this.longitude;
-	}
-
-	public void setLongitude(BigDecimal longitude) {
-		this.longitude = longitude;
+	public void setCid(String cid) {
+		this.cid = cid;
 	}
 
 	public String getName() {

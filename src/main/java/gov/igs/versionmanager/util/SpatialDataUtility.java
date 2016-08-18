@@ -26,31 +26,43 @@ import oracle.sql.STRUCT;
 @Component
 public class SpatialDataUtility {
 
-	public boolean isLatitudeValid(BigDecimal latitude) {
-		if (latitude != null && latitude.compareTo(BigDecimal.valueOf(-90)) > -1
-				&& latitude.compareTo(BigDecimal.valueOf(90)) < 1) {
-			return true;
-		}
-		return false;
-	}
-
-	public boolean isLongitudeValid(BigDecimal longitude) {
-		if (longitude != null && longitude.compareTo(BigDecimal.valueOf(-180)) > -1
-				&& longitude.compareTo(BigDecimal.valueOf(180)) < 1) {
-			return true;
-		}
-		return false;
-	}
-
-	public List<Integer> getBBox(BigDecimal lat, BigDecimal lon) {
+	public List<Integer> getBBox(String cid) {
+		Integer[] latLon = parseCidForLatLon(cid);
 		List<Integer> bbox = new ArrayList<Integer>();
 
-		bbox.add(lon.setScale(0, RoundingMode.FLOOR).intValue()); // xmin
-		bbox.add(lat.setScale(0, RoundingMode.FLOOR).intValue()); // ymin
-		bbox.add(lon.setScale(0, RoundingMode.CEILING).intValue()); // xmax
-		bbox.add(lat.setScale(0, RoundingMode.CEILING).intValue()); // ymax
+		bbox.add(latLon[1]); // xmin
+		bbox.add(latLon[0]); // ymin
+		bbox.add(latLon[1] + 1); // xmax
+		bbox.add(latLon[0] + 1); // ymax
 
 		return bbox;
+	}
+
+	private Integer[] parseCidForLatLon(String cid) {
+		Integer lat = null, lon = null;
+		
+		if( cid.contains("N") ) {
+			lat = Integer.parseInt(cid.substring(0, cid.indexOf("N")));
+
+			if( cid.endsWith("E") ) {
+				lon = Integer.parseInt(cid.substring(cid.indexOf("N") +1, cid.length() -1));
+			}
+			else if( cid.endsWith("W") ) {
+				lon = Integer.parseInt(cid.substring(cid.indexOf("N") +1, (cid.length() -1))) * -1;
+			}
+		}
+		else if( cid.contains("S") ) {
+			lat = Integer.parseInt(cid.substring(0, cid.indexOf("S"))) * -1;
+
+			if( cid.endsWith("E") ) {
+				lon = Integer.parseInt(cid.substring(cid.indexOf("S") +1, cid.length() -1));
+			}
+			else if( cid.endsWith("W") ) {
+				lon = Integer.parseInt(cid.substring(cid.indexOf("S") +1, (cid.length() -1))) * -1;
+			}
+		}
+		
+		return new Integer[] {lat, lon};
 	}
 
 	public int countNumFeatures(List<List<String>> listOfTables) {

@@ -83,10 +83,12 @@ public class JobDataAccessor {
 		return em.find(Job.class, Long.parseLong(jobid));
 	}
 
-	public Job getLatestJobForCell(Integer lat, Integer lon) {
+	public Job getLatestJobForCell(String cid) {
+		if( cid == null ) {
+			return null;
+		}
 		return getJob(em
-				.createNativeQuery("select max(jobid) from job where longitude >= " + lon + " and longitude <= "
-						+ (lon + 1) + " and latitude >= " + lat + " and latitude <= " + (lat + 1))
+				.createNativeQuery("select max(jobid) from job where cid = '" + cid + "'")
 				.getSingleResult().toString());
 	}
 }

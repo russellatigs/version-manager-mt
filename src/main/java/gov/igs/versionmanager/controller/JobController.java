@@ -53,26 +53,13 @@ public class JobController {
 	public VMResponse createJob(@RequestBody CreateJob createJob, @RequestHeader("VMUser") String user) {
 		try {
 			if (createJob.isPopulated()) {
-				BigDecimal lat = createJob.getLatitude();
-				BigDecimal lon = createJob.getLongitude();
-				
-				if (!sdUtil.isLatitudeValid(lat)) {
-					log.log(Level.SEVERE, "Latitude " + lat + " is invalid!");
-					return new VMResponse("Latitude " + lat + " is invalid!");
-				}
-				if (!sdUtil.isLongitudeValid(lon)) {
-					log.log(Level.SEVERE, "Longitude " + lon + " is invalid!");
-					return new VMResponse("Longitude " + lon + " is invalid!");
-				}	
-				
 				Job job = new Job();
 				job.setJobid((new Date()).getTime());
 				job.setName(createJob.getName());
 				job.setStatus(Job.Status.NEW);
 				job.setCreationdate(new Date());
 				job.setCreatedby(user);
-				job.setLatitude(lat);
-				job.setLongitude(lon);
+				job.setCid(createJob.getCid());
 				job.setProvider(createJob.getProvider());
 
 				sda.createWorkspace(job);
@@ -103,7 +90,7 @@ public class JobController {
 			response.addHeader("Content-disposition", "attachment;filename=" + file.getName());
 			response.setContentType(MediaType.TEXT_PLAIN_VALUE);
 			response.addHeader("Content-Length", Long.toString(file.length()));
-			response.addHeader("Set-Cookie",  "fileDownload=true; path=/");
+			response.addHeader("Set-Cookie", "fileDownload=true; path=/");
 
 			// Copy the stream to the response's output stream.
 			IOUtils.copy(fis, response.getOutputStream());
@@ -179,19 +166,9 @@ public class JobController {
 	}
 
 	@RequestMapping(value = "/latest", method = RequestMethod.GET, produces = "application/json")
-	public Job getLatestJobForCell(@RequestParam(value = "xmin") Integer xmin,
-			@RequestParam(value = "ymin") Integer ymin, @RequestHeader("VMUser") String user) {
+	public Job getLatestJobForCell(@RequestParam(value = "cid", required=true) String cid, @RequestHeader("VMUser") String user) {
 
-		if (!sdUtil.isLatitudeValid(BigDecimal.valueOf(ymin))) {
-			log.log(Level.SEVERE, "Latitude " + ymin + " is invalid!");
-			return null;
-		}
-		if (!sdUtil.isLongitudeValid(BigDecimal.valueOf(xmin))) {
-			log.log(Level.SEVERE, "Longitude " + xmin + " is invalid!");
-			return null;
-		}
-
-		Job job = jda.getLatestJobForCell(ymin, xmin);
+		Job job = jda.getLatestJobForCell(cid);
 
 		if (job == null) {
 			log.log(Level.SEVERE, "Job does not exist!");

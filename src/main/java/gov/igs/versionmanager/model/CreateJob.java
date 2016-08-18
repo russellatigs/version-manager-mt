@@ -1,16 +1,13 @@
 package gov.igs.versionmanager.model;
 
-import java.math.BigDecimal;
-
 public class CreateJob {
 	
 	private String name;
 	private String provider;
-	private BigDecimal latitude;
-	private BigDecimal longitude;
-
+	private String cid;
+	
 	public boolean isPopulated() {
-		if (name != null && provider != null && latitude != null && longitude != null) {
+		if (name != null && provider != null && cid != null) {
 			return true;
 		}
 		return false;
@@ -24,20 +21,12 @@ public class CreateJob {
 		this.name = name;
 	}
 
-	public BigDecimal getLatitude() {
-		return latitude;
+	public String getCid() {
+		return cid;
 	}
 
-	public void setLatitude(BigDecimal latitude) {
-		this.latitude = latitude;
-	}
-
-	public BigDecimal getLongitude() {
-		return longitude;
-	}
-
-	public void setLongitude(BigDecimal longitude) {
-		this.longitude = longitude;
+	public void setCid(String cid) {
+		this.cid = cid;
 	}
 	
 	public String getProvider() {
