@@ -72,8 +72,9 @@ public class JobController {
 
 				return new ResponseEntity<VMResponse>(job, HttpStatus.OK);
 			} else {
-				log.log(Level.SEVERE, "Job Request is not valid!");
-				return new ResponseEntity<VMResponse>(new VMResponse("Job Request is not valid!"), HttpStatus.BAD_REQUEST);
+				String errorMsg = "Job Request is not valid! It must contain name, cid, provider fields.";
+				log.log(Level.SEVERE, errorMsg);
+				return new ResponseEntity<VMResponse>(new VMResponse(errorMsg), HttpStatus.BAD_REQUEST);
 			}
 		} catch (Exception e) {
 			e.printStackTrace();
