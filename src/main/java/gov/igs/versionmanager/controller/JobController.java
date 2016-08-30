@@ -12,8 +12,9 @@ import javax.servlet.http.HttpServletResponse;
 
 import org.apache.tomcat.util.http.fileupload.IOUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
-import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
@@ -50,28 +51,32 @@ public class JobController {
 	};
 
 	@RequestMapping(method = RequestMethod.POST, produces = "application/json")
-	public VMResponse createJob(@RequestBody CreateJob createJob, @RequestHeader("VMUser") String user) {
+	public ResponseEntity<VMResponse> createJob(@RequestBody CreateJob createJob, @RequestHeader("VMUser") String user) {
 		try {
 			if (createJob.isPopulated()) {
+				List<Integer> bbox = sdUtil.getBBox(createJob.getCid()); 
+				
 				Job job = new Job();
 				job.setJobid((new Date()).getTime());
 				job.setName(createJob.getName());
 				job.setStatus(Job.Status.NEW);
 				job.setCreationdate(new Date());
 				job.setCreatedby(user);
-				job.setCid(createJob.getCid());
 				job.setProvider(createJob.getProvider());
-
+				job.setLatitude(new BigDecimal(bbox.get(1)));
+				job.setLongitude(new BigDecimal(bbox.get(0)));
+				job.setCid(createJob.getCid());
+				
 				sda.createWorkspace(job);
 
-				return job;
+				return new ResponseEntity<VMResponse>(job, HttpStatus.OK);
 			} else {
 				log.log(Level.SEVERE, "Job Request is not valid!");
-				return new VMResponse("Job Request is not valid!");
+				return new ResponseEntity<VMResponse>(new VMResponse("Job Request is not valid!"), HttpStatus.BAD_REQUEST);
 			}
 		} catch (Exception e) {
 			e.printStackTrace();
-			return new VMResponse(e.getMessage());
+			return new ResponseEntity<VMResponse>(new VMResponse(e.getMessage()), HttpStatus.INTERNAL_SERVER_ERROR);
 		}
 	}
 
@@ -80,7 +85,7 @@ public class JobController {
 			HttpServletResponse response) {
 		try {
 			// CHECK TO MAKE SURE IN THE RIGHT STATE FIRST
-			jobStatusCheck(getJobDetails(jobid, user), Method.EXPORT);
+			jobStatusCheck(((Job)getJobDetails(jobid, user).getBody()), Method.EXPORT);
 
 			// Selects features, writes to a .dump file, and returns file.
 			File file = sda.exportWorkspace(jobid, user);
@@ -101,26 +106,26 @@ public class JobController {
 	}
 
 	@RequestMapping(value = "/{jobid}", method = RequestMethod.POST, produces = "application/json")
-	public VMResponse checkInJob(@PathVariable(value = "jobid") String jobid, @RequestParam final MultipartFile file,
+	public ResponseEntity<VMResponse> checkInJob(@PathVariable(value = "jobid") String jobid, @RequestParam final MultipartFile file,
 			@RequestHeader("VMUser") String user) {
 		try {
 			// CHECK TO MAKE SURE IN THE EXPORTED STATE FIRST
-			jobStatusCheck(getJobDetails(jobid, user), Method.CHECKIN);
+			jobStatusCheck(((Job)getJobDetails(jobid, user).getBody()), Method.CHECKIN);
 
 			sda.checkInFile(jobid, user, file.getInputStream());
 
 			return getJobDetails(jobid, user);
 		} catch (Exception e) {
 			e.printStackTrace();
-			return new VMResponse(e.getMessage());
+			return new ResponseEntity<VMResponse>(new VMResponse(e.getMessage()), HttpStatus.INTERNAL_SERVER_ERROR);
 		}
 	}
 
 	@RequestMapping(value = "/{jobid}", method = RequestMethod.PUT, produces = "application/json")
-	public VMResponse postJobToGold(@PathVariable(value = "jobid") String jobid, @RequestHeader("VMUser") String user) {
+	public ResponseEntity<VMResponse> postJobToGold(@PathVariable(value = "jobid") String jobid, @RequestHeader("VMUser") String user) {
 		try {
 			// CHECK TO MAKE SURE IN THE CHECKED-IN STATE FIRST
-			Job job = getJobDetails(jobid, user);
+			Job job = ((Job)getJobDetails(jobid, user).getBody());
 			jobStatusCheck(job, Method.POST);
 
 			// Calls the “MergeWorkspace” procedure.
@@ -129,22 +134,22 @@ public class JobController {
 			return getJobDetails(jobid, user);
 		} catch (Exception e) {
 			e.printStackTrace();
-			return new VMResponse(e.getMessage());
+			return new ResponseEntity<VMResponse>(new VMResponse(e.getMessage()), HttpStatus.INTERNAL_SERVER_ERROR);
 		}
 	}
 
 	@RequestMapping(value = "/{jobid}", method = RequestMethod.DELETE)
-	public VMResponse deleteJob(@PathVariable(value = "jobid") String jobid, @RequestHeader("VMUser") String user) {
+	public ResponseEntity<VMResponse> deleteJob(@PathVariable(value = "jobid") String jobid, @RequestHeader("VMUser") String user) {
 		try {
 			// CHECK TO MAKE SURE IN THE RIGHT STATE FIRST
-			jobStatusCheck(getJobDetails(jobid, user), Method.DELETE);
+			jobStatusCheck(((Job)getJobDetails(jobid, user).getBody()), Method.DELETE);
 
 			sda.removeWorkspace(jobid);
 
-			return new VMResponse("Job deleted succcessfully");
+			return new ResponseEntity<VMResponse>(new VMResponse("Job deleted succcessfully"), HttpStatus.OK);
 		} catch (Exception e) {
 			e.printStackTrace();
-			return new VMResponse(e.getMessage());
+			return new ResponseEntity<VMResponse>(new VMResponse(e.getMessage()), HttpStatus.INTERNAL_SERVER_ERROR);
 		}
 	}
 
@@ -154,28 +159,37 @@ public class JobController {
 	}
 
 	@RequestMapping(value = "/{jobid}", method = RequestMethod.GET, produces = "application/json")
-	public Job getJobDetails(@PathVariable(value = "jobid") String jobid, @RequestHeader("VMUser") String user) {
-		Job job = jda.getJob(jobid);
-
-		if (job == null) {
-			log.log(Level.SEVERE, "Job does not exist!");
-			return null;
-		} else {
-			return job;
-		}
+	public ResponseEntity<VMResponse> getJobDetails(@PathVariable(value = "jobid") String jobid, @RequestHeader("VMUser") String user) {
+		try {		
+			Job job = jda.getJob(jobid);
+	
+			if (job == null) {
+				log.log(Level.SEVERE, "Job does not exist!");
+				return null;
+			} else {
+				return new ResponseEntity<VMResponse>(job, HttpStatus.OK);
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+			return new ResponseEntity<VMResponse>(new VMResponse(e.getMessage()), HttpStatus.INTERNAL_SERVER_ERROR);
+		}		
 	}
 
 	@RequestMapping(value = "/latest", method = RequestMethod.GET, produces = "application/json")
-	public Job getLatestJobForCell(@RequestParam(value = "cid", required=true) String cid, @RequestHeader("VMUser") String user) {
-
-		Job job = jda.getLatestJobForCell(cid);
-
-		if (job == null) {
-			log.log(Level.SEVERE, "Job does not exist!");
-			return null;
-		} else {
-			return job;
-		}
+	public ResponseEntity<VMResponse> getLatestJobForCell(@RequestParam(value = "cid", required=true) String cid, @RequestHeader("VMUser") String user) {
+		try {
+			Job job = jda.getLatestJobForCell(cid);
+	
+			if (job == null) {
+				log.log(Level.SEVERE, "Job does not exist!");
+				return new ResponseEntity<VMResponse>(new VMResponse("No jobs exist for cell " + cid), HttpStatus.OK);
+			} else {
+				return new ResponseEntity<VMResponse>(job, HttpStatus.OK);
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+			return new ResponseEntity<VMResponse>(new VMResponse(e.getMessage()), HttpStatus.INTERNAL_SERVER_ERROR);
+		}		
 	}
 
 	private void jobStatusCheck(Job job, Method method) throws Exception {

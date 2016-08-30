@@ -84,11 +84,13 @@ public class JobDataAccessor {
 	}
 
 	public Job getLatestJobForCell(String cid) {
-		if( cid == null ) {
+		try {
+			return getJob(em
+					.createNativeQuery("select max(jobid) from job where cid = '" + cid + "'")
+					.getSingleResult().toString());
+		} catch( Exception e ) {
+			e.printStackTrace();
 			return null;
 		}
-		return getJob(em
-				.createNativeQuery("select max(jobid) from job where cid = '" + cid + "'")
-				.getSingleResult().toString());
 	}
 }

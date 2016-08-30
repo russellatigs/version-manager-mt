@@ -35,5 +35,5 @@ public class CreateJob {
 
 	public void setProvider(String provider) {
 		this.provider = provider;
-	}	
+	}
 }

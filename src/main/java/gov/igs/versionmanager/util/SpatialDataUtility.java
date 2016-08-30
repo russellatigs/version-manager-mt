@@ -21,6 +21,7 @@ import oracle.spatial.util.GML2;
 import oracle.spatial.util.GeometryExceptionWithContext;
 import oracle.sql.STRUCT;
 
+@SuppressWarnings("deprecation")
 @Component
 public class SpatialDataUtility {
 
@@ -38,29 +39,26 @@ public class SpatialDataUtility {
 
 	private Integer[] parseCidForLatLon(String cid) {
 		Integer lat = null, lon = null;
-		
-		if( cid.contains("N") ) {
+
+		if (cid.contains("N")) {
 			lat = Integer.parseInt(cid.substring(0, cid.indexOf("N")));
 
-			if( cid.endsWith("E") ) {
-				lon = Integer.parseInt(cid.substring(cid.indexOf("N") +1, cid.length() -1));
+			if (cid.endsWith("E")) {
+				lon = Integer.parseInt(cid.substring(cid.indexOf("N") + 1, cid.length() - 1));
+			} else if (cid.endsWith("W")) {
+				lon = Integer.parseInt(cid.substring(cid.indexOf("N") + 1, (cid.length() - 1))) * -1;
 			}
-			else if( cid.endsWith("W") ) {
-				lon = Integer.parseInt(cid.substring(cid.indexOf("N") +1, (cid.length() -1))) * -1;
-			}
-		}
-		else if( cid.contains("S") ) {
+		} else if (cid.contains("S")) {
 			lat = Integer.parseInt(cid.substring(0, cid.indexOf("S"))) * -1;
 
-			if( cid.endsWith("E") ) {
-				lon = Integer.parseInt(cid.substring(cid.indexOf("S") +1, cid.length() -1));
-			}
-			else if( cid.endsWith("W") ) {
-				lon = Integer.parseInt(cid.substring(cid.indexOf("S") +1, (cid.length() -1))) * -1;
+			if (cid.endsWith("E")) {
+				lon = Integer.parseInt(cid.substring(cid.indexOf("S") + 1, cid.length() - 1));
+			} else if (cid.endsWith("W")) {
+				lon = Integer.parseInt(cid.substring(cid.indexOf("S") + 1, (cid.length() - 1))) * -1;
 			}
 		}
-		
-		return new Integer[] {lat, lon};
+
+		return new Integer[] { lat, lon };
 	}
 
 	public int countNumFeatures(List<List<String>> listOfTables) {

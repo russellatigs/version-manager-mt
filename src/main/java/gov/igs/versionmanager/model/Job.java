@@ -1,6 +1,7 @@
 package gov.igs.versionmanager.model;
 
 import java.io.Serializable;
+import java.math.BigDecimal;
 import java.util.Date;
 
 import javax.persistence.Column;
@@ -70,6 +71,12 @@ public class Job extends VMResponse implements Serializable {
 	@Lob
 	@Column(name = "NAME")
 	private String name;
+	
+	@Column(name = "LATITUDE")
+	private BigDecimal latitude;
+
+	@Column(name = "LONGITUDE")
+	private BigDecimal longitude;
 
 	@Column(name = "NUMFEATURECLASSESCHECKEDIN")
 	private Integer numfeatureclassescheckedin;
@@ -239,4 +246,19 @@ public class Job extends VMResponse implements Serializable {
 		this.provider = provider;
 	}
 	
+	public BigDecimal getLatitude() {
+		return this.latitude;
+	}
+
+	public void setLatitude(BigDecimal latitude) {
+		this.latitude = latitude;
+	}
+
+	public BigDecimal getLongitude() {
+		return this.longitude;
+	}
+
+	public void setLongitude(BigDecimal longitude) {
+		this.longitude = longitude;
+	}
 }
