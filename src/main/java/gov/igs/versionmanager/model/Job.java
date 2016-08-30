@@ -107,6 +107,10 @@ public class Job extends VMResponse implements Serializable {
 	@Column(name = "PROVIDER")
 	private String provider;	
 
+	@Lob
+	@Column(name = "SPECIFICATION")
+	private String specification;
+
 	public Job() {
 	}
 
@@ -260,5 +264,13 @@ public class Job extends VMResponse implements Serializable {
 
 	public void setLongitude(BigDecimal longitude) {
 		this.longitude = longitude;
+	}
+
+	public String getSpecification() {
+		return specification;
+	}
+
+	public void setSpecification(String specification) {
+		this.specification = specification;
 	}
 }

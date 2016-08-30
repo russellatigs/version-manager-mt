@@ -66,6 +66,7 @@ public class JobController {
 				job.setLatitude(new BigDecimal(bbox.get(1)));
 				job.setLongitude(new BigDecimal(bbox.get(0)));
 				job.setCid(createJob.getCid());
+				job.setSpecification(createJob.getSpecification());
 				
 				sda.createWorkspace(job);
 
